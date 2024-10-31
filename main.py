@@ -1,22 +1,21 @@
 from dotenv import load_dotenv
 from selenium import webdriver
-from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
-from webdriver_manager.chrome import ChromeDriverManager
-import ctypes
-import platform
 import datetime
 import os
 import sys
 import time
+import subprocess
+import ctypes
+import platform
 
+# Load environment variables
 if getattr(sys, 'frozen', False):
     env_path = os.path.join(os.path.dirname(sys.executable), '.env')
 else:
     env_path = '.env'
-
 load_dotenv(env_path)
 
 # Environment variables
@@ -26,10 +25,9 @@ TESTING_OVERRIDE = os.getenv("TESTING_OVERRIDE")
 TIME = os.getenv("TIME")
 USERNAME = os.getenv("USER_NAME")
 
-
 class Config:
     STARTING_URL = "https://www.boulevardclub.com/login.aspx"
-    TARGET_TIME = datetime.time(hour=8, minute=0, second=0)  # 08:00:00 AM
+    TARGET_TIME = datetime.time(hour=8, minute=0, second=1)  # 08:00:00 AM
     USERNAME_ID = 'p_lt_ContentWidgets_pageplaceholder_p_lt_zoneContent_CHO_Widget_LoginFormWithFullscreenBackground_XLarge_loginCtrl_BaseLogin_UserName'
     PASSWORD_ID = 'p_lt_ContentWidgets_pageplaceholder_p_lt_zoneContent_CHO_Widget_LoginFormWithFullscreenBackground_XLarge_loginCtrl_BaseLogin_Password'
     LOGIN_BUTTON_ID = 'p_lt_ContentWidgets_pageplaceholder_p_lt_zoneContent_CHO_Widget_LoginFormWithFullscreenBackground_XLarge_loginCtrl_BaseLogin_LoginButton'
@@ -55,8 +53,17 @@ def wait_for_visibility_of_elements(driver, by, value, timeout=5):
 
 
 def setup_driver():
-    """Setup the Chrome driver."""
-    return webdriver.Chrome(service=Service(ChromeDriverManager().install()))
+    """Setup the Chrome driver with remote debugging in incognito mode."""
+    subprocess.Popen(["C:\Program Files (x86)\Google\Chrome\Application\chrome.exe", "--remote-debugging-port=9222", "--user-data-dir=C:/ChromeDebug", "--incognito"])
+
+    options = webdriver.ChromeOptions()
+    options.debugger_address = "localhost:9222"
+
+    try:
+        return webdriver.Chrome(options=options)
+    except Exception as e:
+        print("Error connecting to Chrome in debugging mode:", e)
+        sys.exit("Ensure Chrome is accessible via remote debugging.")
 
 
 def login(driver, username, password):
@@ -111,6 +118,18 @@ def book_timeslot(driver):
     timeslot_element.click()
 
 
+def show_message_box():
+    """Display a message box at the end of the script."""
+    if platform.system() == 'Windows':
+        ctypes.windll.user32.MessageBoxW(0, "Process complete. Press OK to close...", "Done", 1)
+    elif platform.system() == 'Darwin':  # macOS
+        os.system(
+            '''/usr/bin/osascript -e 'tell app "System Events" to display dialog "Process complete. Press OK to close..." buttons {"OK"}' ''')
+    else:
+        print("Process complete. Press Enter to close...")
+        input()  # Fallback for non-Windows platforms
+
+
 def main():
     """Main script."""
     driver = setup_driver()
@@ -125,15 +144,7 @@ def main():
         print(f"An error occurred: {e}")
         driver.save_screenshot(Config.ERROR_SCREENSHOT_PATH)
     finally:
-        input("Press Enter to close...")
-
-        # if getattr(sys, 'frozen', False):
-        #     if platform.system() == 'Windows':
-        #         ctypes.windll.user32.MessageBoxW(0, "Press OK to close...", "Done", 1)
-        #     elif platform.system() == 'Darwin':  # macOS
-        #         os.system(
-        #             '''/usr/bin/osascript -e 'tell app "System Events" to display dialog "Press OK to close..." buttons {"OK"}' ''')
-        # else:
+        show_message_box()
 
 
 if __name__ == "__main__":
