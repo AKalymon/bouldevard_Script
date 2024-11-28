@@ -1,1 +1,9 @@
 .idea
+.env
+.DS_Store
+
+/dist
+/build
+
+screenshot_error.png
+screenshot_success.png
